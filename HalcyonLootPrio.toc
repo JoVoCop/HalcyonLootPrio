@@ -1,0 +1,8 @@
+## Interface: 30401
+## Version: 0.0.1
+## Title: HalcyonLootPrio
+## Notes: Halcyon-Whitemane Loot Prio
+## Author: Jovo
+
+HalcyonLootPrio.lua
+LootTable.lua
