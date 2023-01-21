@@ -6,6 +6,8 @@ Theoretically, `tools/generate-loot-list.py` should work for Joardee's list too
 
 
 Short term goals:
+* Add nightly task to compare google doc against cached lootprio table
+* Add description to tooltip or addon showing when the information was last scraped
 * Rewrite properly. I created this in an hour or so - hacked together. I really should spend some time to follow best-practices
 
 Long term goals:
