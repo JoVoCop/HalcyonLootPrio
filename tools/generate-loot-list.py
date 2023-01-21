@@ -15,18 +15,21 @@ OUTPUT_FILENAME = "LootTable.lua"
 
 SHEET_SPECS = {
     "Physical Loot": {
+        "alias": "Physical Loot",
         "ignore_rows_before": 1, # First two rows
         "item_name_col": 3, # Col: D
         "prio_col": 17, # Col: R
         "notes_col": 18 # Col: S
     },
     "CasterHealer Loot": {
+        "alias": "Caster/Healer Loot",
         "ignore_rows_before": 1, # First two rows
         "item_name_col": 3, # Col: D
         "prio_col": 15, # Col: P
         "notes_col": 16 # Col: Q
     },
     "Tank Loot": {
+        "alias": "Tank Loot",
         "ignore_rows_before": 1, # First two rows
         "item_name_col": 2, # Col: C
         "prio_col": 16, # Col: Q
@@ -77,6 +80,7 @@ for sheetName in doc.sheet_names:
     itemNameColIndex = spec["item_name_col"]
     prioColIndex = spec["prio_col"]
     notesColIndex = spec["notes_col"]
+    sheetAlias = spec["alias"]
 
     for index, row in sheet[ignoreRowsBeforeIndex:].iterrows():
         # each row is returned as a pandas series
@@ -107,7 +111,7 @@ for sheetName in doc.sheet_names:
             continue
 
         lootSheetEntry = {
-            "sheet": sheetName,
+            "sheet": sheetAlias,
             "prio": prioText
         }
 
@@ -134,10 +138,9 @@ print("Writing loot table to {filename}".format(filename=OUTPUT_FILENAME))
 with open(OUTPUT_FILENAME, "w") as f:
     f.write("lootTable = {\n")
 
+    # Example item line
     # { ["itemid"] = "45110", ["itemname"] = "Titanguard", ["sections"] = {{["sheet"] = "Physical DPS", ["prio"] = "Tank", ["note"] = "Give to your MT first"},{["sheet"] = "Caster DPS", ["prio"] = "Blah", ["note"] = "Howdy"}}},
 
-
-    # TODO: Support multi sheet
     for key, value in lootTable.items():
 
         sectionsText = "{"
