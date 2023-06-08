@@ -9,7 +9,7 @@ import re
 # 3 - Review output LootTable.lua in this directory. If it looks good, copy it to the root of the repo 
 
 # Ignore these sheets from the spreadhseet
-IGNORE_SHEETS = ['Introduction', 'Physical BIS Lists', 'Caster BIS Lists', 'Healer BIS Lists', 'Tank BIS Lists']
+IGNORE_SHEETS = ['Introduction', 'Physical BIS Lists', 'Caster BIS Lists', 'Healer BIS Lists', 'Tank BIS Lists', 'Fusion Streams']
 FILENAME = "sheet.xlsx"
 OUTPUT_FILENAME = "LootTable.lua"
 
@@ -17,23 +17,23 @@ SHEET_SPECS = {
     "Physical Loot": {
         "alias": "Physical Loot",
         "ignore_rows_before": 1, # First two rows
-        "item_name_col": 3, # Col: D
-        "prio_col": 17, # Col: R
-        "notes_col": 18 # Col: S
+        "item_name_col": 5, # Col: F
+        "prio_col": 8, # Col: I
+        "notes_col": 9 # Col: J
     },
     "CasterHealer Loot": {
         "alias": "Caster/Healer Loot",
         "ignore_rows_before": 1, # First two rows
-        "item_name_col": 3, # Col: D
-        "prio_col": 15, # Col: P
-        "notes_col": 16 # Col: Q
+        "item_name_col": 5, # Col: F
+        "prio_col": 8, # Col: I
+        "notes_col": 9 # Col: J
     },
     "Tank Loot": {
         "alias": "Tank Loot",
         "ignore_rows_before": 1, # First two rows
-        "item_name_col": 2, # Col: C
-        "prio_col": 16, # Col: Q
-        "notes_col": 17 # Col: R
+        "item_name_col": 5, # Col: F
+        "prio_col": 8, # Col: I
+        "notes_col": 9 # Col: J
     }
 }
 # It seems that not all tabs (sheets) are created equal. Some have boss columns, some don't.
