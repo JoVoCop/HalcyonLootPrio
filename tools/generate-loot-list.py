@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import openpyxl
+import json
 import re
 
 # Steps:
@@ -10,30 +11,40 @@ import re
 
 # Ignore these sheets from the spreadhseet
 IGNORE_SHEETS = ['Introduction', 'Physical BIS Lists', 'Caster BIS Lists', 'Healer BIS Lists', 'Tank BIS Lists', 'Fusion Streams']
-FILENAME = "sheet.xlsx"
-OUTPUT_FILENAME = "LootTable.lua"
+FILENAME = "joardee-phase-four.xlsx"
+OUTPUT_FILENAME = "PhaseFourLootTable.lua"
+errors = []
+warnings = []
+# Fix for typos in the spreadsheet
+nameoverrides = {
+    "Byrntroll, the Bone Arbiter": "Bryntroll, the Bone Arbiter",
+    "Bulwark of Smoldering Steel": "Bulwark of Smouldering Steel",
+    "Leather Stitched Scourge Parts": "Leather of Stitched Scourge Parts",
+    "Bloodsurge, Kel'thuzad's Blade of Agony": "Bloodsurge, Kel'Thuzad's Blade of Agony",
+    "Devium's Eternall Cold Ring": "Devium's Eternally Cold Ring"
+}
 
 SHEET_SPECS = {
     "Physical Loot": {
         "alias": "Physical Loot",
         "ignore_rows_before": 1, # First two rows
-        "item_name_col": 5, # Col: F
-        "prio_col": 8, # Col: I
-        "notes_col": 9 # Col: J
+        "item_name_col": 2, # Col: C
+        "prio_col": 16, # Col: Q
+        "notes_col": 17 # Col: R
     },
     "CasterHealer Loot": {
         "alias": "Caster/Healer Loot",
         "ignore_rows_before": 1, # First two rows
-        "item_name_col": 5, # Col: F
-        "prio_col": 8, # Col: I
-        "notes_col": 9 # Col: J
+        "item_name_col": 2, # Col: C
+        "prio_col": 14, # Col: O
+        "notes_col": 15 # Col: P
     },
     "Tank Loot": {
         "alias": "Tank Loot",
         "ignore_rows_before": 1, # First two rows
-        "item_name_col": 5, # Col: F
-        "prio_col": 8, # Col: I
-        "notes_col": 9 # Col: J
+        "item_name_col": 2, # Col: C
+        "prio_col": 14, # Col: O
+        "notes_col": 15 # Col: P
     }
 }
 # It seems that not all tabs (sheets) are created equal. Some have boss columns, some don't.
@@ -55,6 +66,21 @@ def _get_item_id_from_link(link):
         return matcher.groups()[0]
     return None
 
+def _get_item_ids_from_json_loot_table(name):
+    """ Attempts to get the item ids from the backup-loot-table.json file"""
+
+    # Read backup-loot-table.json as json
+    # Attempt to find the name in the json dict
+    # Return the item id(s) if found
+    # Return None if not found
+
+    with open("backup-loot-table.json", "r") as f:
+        lootTable = json.load(f)
+        if name in lootTable:
+            return lootTable[name]
+        else:
+            return None
+    
 
 # Main logic...
 
@@ -88,9 +114,24 @@ for sheetName in doc.sheet_names:
 
         itemName = row[itemNameColIndex]
         itemLink = _get_link_if_exists(openpysheet.cell(row=index+ignoreRowsBeforeIndex+1, column=itemNameColIndex+1))
-        itemId = _get_item_id_from_link(itemLink)
+
+        # Sometimes there are typos in the sheet. We can override the name here
+        if itemName in nameoverrides:
+            print(">> Overriding item name: {}".format(nameoverrides[itemName]))
+            itemName = nameoverrides[itemName]
+
+        if itemLink is not None:
+            print("Item link: {}".format(itemLink))
+            itemId = _get_item_id_from_link(itemLink)
+        else:
+            print("Attempting to get item id from backup-loot-table.json")
+            itemId = _get_item_ids_from_json_loot_table(itemName)
         prioText = row[prioColIndex]
         notesText = row[notesColIndex]
+
+        # If notesText is a string, remove all newline characters
+        if isinstance(notesText, str):
+            notesText = notesText.replace("\n", "")
 
         print("Item Name: {}".format(itemName))
         print("Item ID: {}".format(itemId))
@@ -98,16 +139,19 @@ for sheetName in doc.sheet_names:
         print("Notes: {}".format(notesText))
         print("--------------------------")
 
-        if itemId is None:
-            print("ERROR: Unable to extract item id. Skipping.")
+        if itemName is None:
+            print(f"ERROR: Unable to extract item name (row: {row}, index: {index}). Skipping.")
+            errors.append(f"ERROR: Unable to extract item name (row: {row}, index: {index}). Skipping.")
             continue
 
-        if itemName is None:
-            print("ERROR: Unable to extract item name. Skipping.")
+        if itemId is None:
+            print(f"ERROR: Unable to extract item id for {itemName}. Skipping.")
+            errors.append(f"ERROR: Unable to extract item id for {itemName}. Skipping.")
             continue
 
         if prioText is None:
-            print("WARNING: No prio text for item. Skipping.")
+            print(f"WARNING: No prio text for item {itemName}. Skipping.")
+            warnings.append(f"WARNING: No prio text for item {itemName}. Skipping.")
             continue
 
         lootSheetEntry = {
@@ -118,20 +162,41 @@ for sheetName in doc.sheet_names:
         if notesText is not None:
             lootSheetEntry["note"] = notesText
 
-        lootEntry = {
-            "itemid": itemId,
-            "itemname": itemName,
-            "sheets": [
-                lootSheetEntry
-            ]
-        }
+        # Check if itemId is a list. If so, we need to add multiple entries to the loot table.
+        # This happens when we used the backup-loot-table.json file to get the item id
+        if isinstance(itemId, list):
+            # itemId is a list
+            for itemIdEntry in itemId:
+                lootEntry = {
+                    "itemid": itemIdEntry,
+                    "itemname": itemName,
+                    "sheets": [
+                        lootSheetEntry
+                    ]
+                }
 
-        if itemId not in lootTable:
-            # New item
-            lootTable[itemId] = lootEntry
+                if itemIdEntry not in lootTable:
+                    # New item
+                    lootTable[itemIdEntry] = lootEntry
+                else:
+                    # Already exists in another sheet
+                    lootTable[itemIdEntry]["sheets"].append(lootEntry["sheets"][0])
         else:
-            # Already exists in another sheet
-            lootTable[itemId]["sheets"].append(lootEntry["sheets"][0])
+            # itemId is a single value
+            lootEntry = {
+                "itemid": itemId,
+                "itemname": itemName,
+                "sheets": [
+                    lootSheetEntry
+                ]
+            }
+
+            if itemId not in lootTable:
+                # New item
+                lootTable[itemId] = lootEntry
+            else:
+                # Already exists in another sheet
+                lootTable[itemId]["sheets"].append(lootEntry["sheets"][0])
 
 print("Writing loot table to {filename}".format(filename=OUTPUT_FILENAME))
 
@@ -168,3 +233,14 @@ with open(OUTPUT_FILENAME, "w") as f:
     f.write("}\n")
 
 print("Done")
+
+
+if len(warnings) > 0:
+    print("Warnings encountered:")
+    for warning in warnings:
+        print(warning)
+
+if len(errors) > 0:
+    print("Errors encountered:")
+    for error in errors:
+        print(error)
